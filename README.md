@@ -74,13 +74,13 @@ EMBEDDING_MODEL="BAAI/bge-large-en-v1.5"
 
 ```bash
 # Ensure you have NVIDIA Container Toolkit installed for GPU support
-docker compose up -d --build
+docker compose up -d
 ```
 
 ### 3. Initialize Schema
 
 ```bash
-npx drizzle-kit push
+bun db:sync
 ```
 
 ## 🔍 Search Strategy Details

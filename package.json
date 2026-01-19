@@ -1,0 +1,26 @@
+{
+  "type": "module",
+  "module": "src/index.ts",
+  "scripts": {
+    "api:embeddings": "curl -fsSL http://localhost:8000/api-doc/openapi.json | openapi --useOptions --useUnionTypes -i /dev/stdin -o src/lib/embeddings",
+    "db:drop": "drizzle-kit drop",
+    "db:gen": "drizzle-kit generate",
+    "db:sync": "drizzle-kit migrate"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.1",
+    "env-var": "^7.5.0",
+    "groq-sdk": "^0.37.0",
+    "pg": "^8.17.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.9",
+    "@types/pg": "^8.16.0",
+    "drizzle-kit": "^0.31.8",
+    "openapi-typescript-codegen": "^0.30.0",
+    "prettier": "^3.8.0",
+    "prettier-plugin-packagejson": "^2.5.22",
+    "prettier-plugin-sort-json": "^4.2.0",
+    "typescript": "^5.9.3"
+  }
+}

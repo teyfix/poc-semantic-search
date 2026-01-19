@@ -1,0 +1,95 @@
+x-healthcheck: &healthcheck
+  interval: 30s
+  timeout: 5s
+  retries: 15
+  start_period: 3s
+  start_interval: 1s
+
+networks:
+  tei:
+  tei_priv:
+
+volumes:
+  tei_data:
+  tei_cache:
+
+configs:
+  tei_nginx:
+    content: |-
+      proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=tei_cache:10m max_size=1g inactive=60m use_temp_path=off;
+
+      server {
+        listen 80;
+        listen [::]:80;
+
+        location / {
+          # Observability
+          add_header X-Cache-Status $$upstream_cache_status;
+
+          # Cache behavior
+          proxy_cache tei_cache;
+          proxy_cache_key "$${EMBEDDING_MODEL}|$$scheme$$proxy_host$$uri$$is_args$$args|$$request_body";
+          proxy_cache_methods POST;
+          proxy_cache_valid 200 201 204 1d;
+          proxy_cache_lock on;
+
+          # Upstream
+          proxy_pass http://tei.priv;
+
+          # Response rewriting
+          proxy_redirect default;
+        }
+      }
+
+services:
+  tei_server:
+    image: ghcr.io/huggingface/text-embeddings-inference:1.8.3
+    command: ["--model-id", "$EMBEDDING_MODEL"]
+    environment:
+      - EMBEDDING_MODEL
+    volumes:
+      - tei_data:/data
+    expose:
+      - 80
+    networks:
+      tei_priv:
+        aliases:
+          - tei.priv
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      <<: *healthcheck
+      # Make room for downloading the model (10m)
+      retries: 100
+      start_interval: 6s
+      test: [CMD-SHELL, curl -fL http://localhost/health]
+
+  tei:
+    image: nginx:alpine
+    volumes:
+      - tei_cache:/var/cache/nginx
+    environment:
+      - EMBEDDING_MODEL
+    configs:
+      - source: tei_nginx
+        target: /etc/nginx/templates/default.conf.template
+    expose:
+      - 80
+    ports:
+      - 8000:80
+    networks:
+      tei:
+        aliases:
+          - tei.lokal
+      tei_priv:
+    depends_on:
+      tei_server:
+        condition: service_healthy
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD-SHELL, curl -fL http://localhost/health]
